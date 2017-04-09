@@ -27,10 +27,10 @@ class IdleSpider(object):
     def request_scheduled(self, spider):
         now = time.time()
         if now - self.checked >= self.timeout:
-            spider.log("Scraped %d items in last %d seconds." % (self.items, self.timeout))
             if self.items == 0:
                 self.crawler.engine.close_spider(spider, 'no item scraped')
             else:
+                spider.log("Scraped %d item in last %d seconds." % (self.items, self.timeout))
                 self.items = 0
             self.checked = now
 
