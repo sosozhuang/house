@@ -7,7 +7,7 @@ from hbase.ttypes import IOError
 
 
 class HbaseWrapper(object):
-    def __init__(self, table, host='127.0.0.1', port=9090):
+    def __init__(self, host='127.0.0.1', port=9090, table=None):
         self.host = host
         self.port = port
         if not isinstance(table, str):
