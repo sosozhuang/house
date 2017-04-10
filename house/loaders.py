@@ -4,8 +4,6 @@ import sys
 from scrapy.loader import ItemLoader
 from scrapy.loader.processors import TakeFirst, MapCompose, Join
 
-from house.items import SecondhandHouseItem
-
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
