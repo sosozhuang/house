@@ -123,19 +123,21 @@ ITEM_PIPELINES = {
 DOWNLOAD_TIMEOUT = 15
 REDIRECT_MAX_TIMES = 10
 RETRY_TIMES = 10
-LOG_FILE = 'house.log'
+#LOG_FILE = 'house.log'
 
 # hbase config
 HBASE_HOST = '127.0.0.1'
 HBASE_PORT = 9090
+
 NEW_HOUSE_TABLE = 'new'
-SECONDHAND_HOUSE_TABLE = 'second1'
-SOLD_HOUSE_TABLE = 'sold1'
+SECONDHAND_HOUSE_TABLE = 'secondhand'
+SOLD_HOUSE_TABLE = 'sold'
 HISTORY_TABLE = 'history'
+PROXY_TABLE = 'proxy'
 
+# house.middlewares.RandomHttpProxyMiddleware
+PROXIES_TIMEOUT = 60
+# house.middlewares.ProxyTimeoutMiddleware
+PROXY_RETRY_TIMES = 2
+# house.extensions.IdleSpider
 IDLESPIDER_TIMEOUT = 90
-PROXY_RETRY_TIMES = 5
-
-HTTP_PROXIES = [
-
-]
