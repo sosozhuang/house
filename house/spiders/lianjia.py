@@ -18,6 +18,7 @@ from house.loaders import SecondhandHouseLoader, NewHouseLoader, SoldHouseLoader
 
 class LianjiaSpider(Spider):
     name = 'lianjia'
+    allowed_domains = ['lianjia.com']
     start_urls = ['http://gz.lianjia.com/sitemap/']
     target_cities = [u'北京', u'广州', u'深圳']
                     # u'厦门', u'杭州', u'成都',
@@ -382,6 +383,7 @@ class LianjiaSpider(Spider):
 
 class LianjiaSHSpider(Spider):
     name = 'shanghai'
+    allowed_domains = ['lianjia.com']
     start_urls = ['http://sh.lianjia.com/ershoufang']
     city = u'上海'
 
