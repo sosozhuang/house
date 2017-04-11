@@ -54,6 +54,23 @@ class HbaseWrapper(object):
             self._reopen()
             return self.get(row_key, columns, attrs)
 
+    def delete(self, row_key):
+        try:
+            self.client.deleteAllRow(self.table, row_key, {})
+        except TTransportException:
+            self._reopen()
+            return self.delete(self.table, row_key)
+
+    def scan_and_get(self, tscan, num=100):
+        try:
+            scan_id = self.client.scannerOpenWithScan(self.table, tscan, {})
+            rows = self.client.scannerGetList(scan_id, num)
+            self.client.scannerClose(scan_id)
+            return [r.row for r in rows]
+        except TTransportException:
+            self._reopen()
+            return self.scan_and_get(tscan, num)
+
     def close(self):
         if self.transport.isOpen():
             self.transport.close()
