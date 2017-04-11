@@ -73,10 +73,6 @@ class LianjiaSpider(Spider):
 
     def parse_secondhand_house_page(self, response):
         sel = Selector(response)
-        # house_links = sel.xpath('//div[@class="title"]/a/@href').extract()
-        # if not house_links:
-        #     self.log('Crawled page %s cant find any house link.' % response.url, logging.WARN)
-        #     return
 
         titles = sel.xpath('//div[@class="title"]/a/text()').extract()
         house_infos = sel.xpath('//div[@class="address"]/div[@class="houseInfo"]')
@@ -114,13 +110,6 @@ class LianjiaSpider(Spider):
             loader.add_value('unit', units[i])
             yield loader.load_item()
 
-        # for link in house_links:
-        #     meta = dict(response.meta)
-        #     meta['check_crawled'] = True
-        #     meta['suffix'] = self.crawled_day
-        #     yield Request(url=link,
-        #                   meta=meta,
-        #                   callback=self.parse_secondhand_house)
         page_box = sel.xpath('//div[@class="page-box house-lst-page-box"]')
         page_url = page_box.xpath('@page-url').extract_first()
         if not page_url:
@@ -134,12 +123,6 @@ class LianjiaSpider(Spider):
         cur_page = page['curPage']
         if cur_page == 1:
             base_url = get_base_url(response)
-            # sold_url = sel.xpath('//div[@class="menu"]//ul[@class="typeList"]/li[2]/a/@href').extract_first()
-            # u = urljoin(base_url, sold_url)
-            # yield Request(url=u,
-            #               meta=response.meta,
-            #               callback=self.parse_sold_house_page)
-
             meta = dict(response.meta)
             meta['check_crawled'] = True
             meta['suffix'] = self.crawled_day
@@ -289,12 +272,6 @@ class LianjiaSpider(Spider):
         loader.add_value('total', total_price)
         loader.add_value('unit', unit_price)
         item = loader.load_item()
-        # empty = False
-        # for i in item:
-        #     if len(item[i]) == 0:
-        #         self.log('Crawl page %s with [%s] empty' % (response, i), logging.WARN)
-        #         empty = True
-
         return item
 
     def parse_sold_house(self, response):
@@ -372,12 +349,6 @@ class LianjiaSpider(Spider):
         loader.add_value('b_space', built_space)
         loader.add_value('p_year', property_year)
         item = loader.load_item()
-        # empty = False
-        # for i in item:
-        #     if len(item[i]) == 0:
-        #         self.log('Crawl page %s with [%s] empty' % (response, i), logging.WARN)
-        #         empty = True
-
         return item
 
 
@@ -523,18 +494,9 @@ class LianjiaSHSpider(Spider):
 
         page_box = sel.xpath('//div[@class="page-box house-lst-page-box"]')
         cur_page = page_box.xpath('a[@class="on"]/text()').extract_first()
-        # if next_page == 'results_next_page':
-        # for i in range(2, pages + 1):
-        # next_page_url = 'd%d' % i
-        # next_page_url = page_box.xpath('a[last()]/@href').extract_first()
-        # u = urljoin(base_url, next_page_url)
         if cur_page == '1':
             base_url = get_base_url(response)
             area = base_url.strip('/').split('/')[-1]
-            # total = sel.xpath('//div[@class="list-head clear"]/h2/span/text()').extract_first().strip()
-            # pages = int(total)/min_length if total.isdigit() else 100
-            # if next_page == 'results_next_page':
-            # next_page_url = page_box.xpath('a[last()]/@href').extract_first()
             pages = page_box.xpath('a[@gahref="results_totalpage"]/text()').extract_first()
             if not pages:
                 pages = page_box.xpath('a[@gahref="last()-1"]/text()').extract_first()
@@ -545,7 +507,6 @@ class LianjiaSHSpider(Spider):
             pages = int(pages) if isinstance(pages, unicode) and pages.isdigit() else 100
             for i in range(2, pages + 1):
                 next_page_url = '/chengjiao/%s/d%d' % (area, i)
-                # next_page_url = page_box.xpath('a[last()]/@href').extract_first()
                 u = urljoin(base_url, next_page_url)
                 meta = dict(response.meta)
                 meta['check_crawled'] = True
