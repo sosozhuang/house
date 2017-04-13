@@ -5,10 +5,15 @@
 # See documentation in:
 # http://doc.scrapy.org/en/latest/topics/spider-middleware.html
 import hashlib
+import threading
 from random import Random
 
+import time
+
+import thread
 from hbase import Hbase
-from scrapy.exceptions import IgnoreRequest, CloseSpider, NotConfigured
+from scrapy import signals
+from scrapy.exceptions import IgnoreRequest, NotConfigured
 from w3lib.url import safe_url_string
 
 from house.hbase_wrapper import HbaseWrapper
@@ -36,43 +41,68 @@ class RandomUserAgentMiddleware(object):
 
 
 class RandomHttpProxyMiddleware(object):
-    http_proxies = [
-        # 'http://171.36.135.207:8998',
-        # 'http://171.37.246.170:8998',
-        # 'http://36.249.28.168:808',
-        # 'http://222.94.145.40:808',
-        # 'http://112.85.104.48:808',
-        # 'http://112.85.236.85:808',
-        # 'http://112.87.8.244:8998',
-        # 'http://221.229.44.50:808',
-        # 'http://112.93.150.32:8998',
-        # 'http://112.82.170.63:808',
-    ]
-
-    failed_proxies = set()
+    # http_proxies = []
+    # failed_proxies = set()
     r = Random()
+
+    # def __init__(self, timeout):
+    #     self.timeout = timeout
+    #     self.tscan = Hbase.TScan(columns=["cf:0"], caching=True, batchSize=20)
+    #     self._get_http_proxies()
+
+    @classmethod
+    def _get_proxies(cls):
+        try:
+            cls.mutex.acquire()
+            cls.http_proxies = cls.hbase.scan_and_get(cls.tscan)
+        finally:
+            cls.mutex.release()
+        cls.checked = time.time()
 
     @classmethod
     def from_crawler(cls, crawler):
-        cls.http_proxies = crawler.settings.get('HTTP_PROXIES', False)
-        if not cls.http_proxies:
-            raise NotConfigured
+        # cls.http_proxies = crawler.settings.get('HTTP_PROXIES', False)
+        # if not cls.http_proxies:
+        #     raise NotConfigured
+        host = crawler.settings.get('HBASE_HOST')
+        port = crawler.settings.get('HBASE_PORT')
+        table = crawler.settings.get('PROXY_TABLE')
+        # cls.stats = crawler.stats
+        cls.hbase = HbaseWrapper(host, port, table)
+        cls.mutex = thread.allocate_lock()
+        cls.timeout = crawler.settings.get('PROXIES_TIMEOUT')
+        cls.tscan = Hbase.TScan(columns=['cf:0'], caching=True, batchSize=20)
+        cls._get_proxies()
         s = cls()
+        crawler.signals.connect(s.spider_closed, signal=signals.spider_closed)
         return s
 
     @classmethod
-    def remove_proxy(cls, proxy, stats=None):
-        if proxy in cls.http_proxies:
-            cls.http_proxies.remove(proxy)
-            cls.failed_proxies.add(proxy)
-            if stats:
-                stats.set_value('proxy_failed', cls.failed_proxies)
-        if len(cls.http_proxies) == 0:
+    def remove_proxy(cls, proxy):
+        try:
+            cls.mutex.acquire()
+            if proxy in cls.http_proxies:
+                cls.http_proxies.remove(proxy)
+                cls.hbase.delete(proxy)
+                # cls.failed_proxies.add(proxy)
+                # cls.stats.set_value('proxy_failed', cls.failed_proxies)
+        finally:
+            cls.mutex.release()
+        if not cls.http_proxies:
             return 'proxy list empty'
 
+    @classmethod
+    def spider_closed(cls):
+        cls.hbase.close()
+
     def process_request(self, request, spider):
+        now = time.time()
+        if now - self.checked >= self.timeout:
+            self._get_proxies()
+
         if not self.http_proxies:
             raise IgnoreRequest('proxy list empty')
+
         proxy = self.r.choice(self.http_proxies)
         if proxy:
             request.meta['proxy'] = proxy
@@ -84,7 +114,7 @@ class CaptchaRedirectMiddleware(object):
 
     def __init__(self, crawler):
         self.crawler = crawler
-        self.stats = crawler.stats
+        # self.stats = crawler.stats
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -99,7 +129,7 @@ class CaptchaRedirectMiddleware(object):
         if 'captcha' in location:
             if 'proxy' in request.meta:
                 spider.log('Request <%s> redirected to captcha using proxy: %s.' % (request.url, request.meta['proxy']))
-                if RandomHttpProxyMiddleware.remove_proxy(request.meta['proxy'], self.stats):
+                if RandomHttpProxyMiddleware.remove_proxy(request.meta['proxy']):
                     self.crawler.engine.close_spider(spider, 'proxy list empty')
             redirected = request.replace(url=request.url, method='GET', body='')
             redirected.headers.pop('Content-Type', None)
@@ -117,7 +147,7 @@ class ProxyTimeoutMiddleware(object):
             raise NotConfigured
         self.crawler = crawler
         self.retry_proxies = {}
-        self.stats = crawler.stats
+        # self.stats = crawler.stats
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -132,7 +162,7 @@ class ProxyTimeoutMiddleware(object):
             count = self.retry_proxies.get(proxy, 0) + 1
             self.retry_proxies[proxy] = count
             if count >= self.proxy_max_retry_times:
-                if RandomHttpProxyMiddleware.remove_proxy(proxy, self.stats):
+                if RandomHttpProxyMiddleware.remove_proxy(proxy):
                     self.crawler.engine.close_spider(spider, 'proxy list empty')
                 spider.log('Remove proxy: %s.' % proxy)
                 del self.retry_proxies[proxy]
@@ -158,11 +188,16 @@ class IgnoreRequestMiddleware(object):
 
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(crawler.settings)
+        s = cls(crawler.settings)
+        crawler.signals.connect(s.spider_closed, signal=signals.spider_closed)
+        return s
+
+    def spider_closed(self):
+        self.hbase.close()
 
     def process_request(self, request, spider):
         if request.meta.get('check_crawled', False):
-            spider.log('Checking requested history for <%s>.' % request.url)
+            spider.log('Checking history for <%s>.' % request.url)
             m = hashlib.md5(request.url)
             if 'suffix' in request.meta:
                 m.update(request.meta['suffix'])
@@ -177,7 +212,9 @@ class UrlRecordMiddleware(object):
 
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(crawler.settings)
+        s = cls(crawler.settings)
+        crawler.signals.connect(s.spider_closed, signal=signals.spider_closed)
+        return s
 
     def __init__(self, settings):
         self.host = settings.get('HBASE_HOST')
@@ -187,6 +224,9 @@ class UrlRecordMiddleware(object):
         self.hbase = HbaseWrapper(self.host, self.port, self.table)
         column_families = (Hbase.ColumnDescriptor(name=self.column_family, maxVersions=1, timeToLive=86400),)
         self.hbase.create_table_if_not_exists(column_families)
+
+    def spider_closed(self):
+        self.hbase.close()
 
     def _record(self, row_key):
         mutations = (self.hbase.mutation(self.column_family, self.qualifier),)
