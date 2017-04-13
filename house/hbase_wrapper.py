@@ -59,7 +59,7 @@ class HbaseWrapper(object):
             self.client.deleteAllRow(self.table, row_key, {})
         except TTransportException:
             self._reopen()
-            return self.delete(self.table, row_key)
+            return self.delete(row_key)
 
     def scan_and_get(self, tscan, num=100):
         try:
