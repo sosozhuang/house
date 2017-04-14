@@ -50,7 +50,7 @@ def filter_main_area(main_area):
 
 
 def filter_deal(deal):
-    return deal.replace('.', '').replace('-', '')
+    return deal.replace('.', '-')
 
 
 def encode_field(field):
@@ -66,7 +66,7 @@ class SecondhandHouseLoader(ItemLoader):
     comm_in = MapCompose(filter_space, encode_field)
     tags_in = MapCompose(filter_tag, encode_field)
     tags_out = Join(',')
-    unit_in = MapCompose(filter_digit)
+    unit_in = MapCompose(filter_digit, encode_field)
 
 
 class SoldHouseLoader(ItemLoader):
