@@ -60,7 +60,7 @@ class SecondhandHousePipeline(HousePipeline):
 
     def open_spider(self, spider):
         column_families = (Hbase.ColumnDescriptor(name=self.cf_basic, maxVersions=1),
-                           Hbase.ColumnDescriptor(name=self.cf_price, maxVersions=1, timeToLive=365*24*60*60))
+                           Hbase.ColumnDescriptor(name=self.cf_price, maxVersions=1, timeToLive=365 * 24 * 60 * 60))
         self.hbase.create_table_if_not_exists(column_families)
 
     def process_item(self, item, spider):
@@ -74,19 +74,18 @@ class SecondhandHousePipeline(HousePipeline):
         mutations = []
         row_key = item['id']
         for qualifier in ('city', 'title', 'room',
-                  'comm', 'id', 'main',
-                  'sub', 'space', 'tags', 'b_year'):
+                          'comm', 'id', 'main',
+                          'sub', 'space', 'tags', 'b_year'):
             value = item.get(qualifier)
             if qualifier:
                 m = self.hbase.mutation(self.cf_basic, qualifier, value)
                 mutations.append(m)
+        for qualifier in ('total', 'unit'):
+            value = item.get(qualifier)
+            if qualifier:
+                m = self.hbase.mutation(self.cf_price, qualifier, value)
+                mutations.append(m)
 
-        # for qualifier in (item['city'], item['title'], item['room'],
-        #                   item['comm'], item['id'], item['main'],
-        #                   item['sub'], item['space'], item['tags'],
-        #                   item['b_year']):
-        #     m = self.hbase.mutation(self.cf_basic, qualifier, item[qualifier])
-        #     mutations.append(m)
         self.hbase.put(row_key, mutations)
 
         mutations = [self.ctime]
@@ -160,4 +159,3 @@ class NewHousePipeline(HousePipeline):
         self.hbase.put(row_key, mutations)
 
         return item
-
