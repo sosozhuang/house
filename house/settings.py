@@ -135,6 +135,7 @@ SOLD_HOUSE_TABLE = 'sold'
 HISTORY_TABLE = 'history'
 PROXY_TABLE = 'proxy'
 
+CAPTCHA_URL = 'captcha'
 # house.middlewares.RandomHttpProxyMiddleware
 PROXIES_TIMEOUT = 60
 # house.middlewares.ProxyTimeoutMiddleware
