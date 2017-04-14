@@ -41,14 +41,7 @@ class RandomUserAgentMiddleware(object):
 
 
 class RandomHttpProxyMiddleware(object):
-    # http_proxies = []
-    # failed_proxies = set()
     r = Random()
-
-    # def __init__(self, timeout):
-    #     self.timeout = timeout
-    #     self.tscan = Hbase.TScan(columns=["cf:0"], caching=True, batchSize=20)
-    #     self._get_http_proxies()
 
     @classmethod
     def _get_proxies(cls):
@@ -84,8 +77,6 @@ class RandomHttpProxyMiddleware(object):
             if proxy in cls.http_proxies:
                 cls.http_proxies.remove(proxy)
                 cls.hbase.delete(proxy)
-                # cls.failed_proxies.add(proxy)
-                # cls.stats.set_value('proxy_failed', cls.failed_proxies)
         finally:
             cls.mutex.release()
         if not cls.http_proxies:
@@ -114,7 +105,7 @@ class CaptchaRedirectMiddleware(object):
 
     def __init__(self, crawler):
         self.crawler = crawler
-        # self.stats = crawler.stats
+        self.captcha = crawler.settings.get('CAPTCHA_URL')
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -126,7 +117,7 @@ class CaptchaRedirectMiddleware(object):
             return response
 
         location = safe_url_string(response.headers['Location'])
-        if 'captcha' in location:
+        if self.captcha in location:
             if 'proxy' in request.meta:
                 spider.log('Request <%s> redirected to captcha using proxy: %s.' % (request.url, request.meta['proxy']))
                 if RandomHttpProxyMiddleware.remove_proxy(request.meta['proxy']):
@@ -147,7 +138,6 @@ class ProxyTimeoutMiddleware(object):
             raise NotConfigured
         self.crawler = crawler
         self.retry_proxies = {}
-        # self.stats = crawler.stats
 
     @classmethod
     def from_crawler(cls, crawler):
