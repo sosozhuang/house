@@ -363,8 +363,8 @@ class LianjiaSHSpider(Spider):
 
     def parse(self, response):
         sel = Selector(response)
-        areas = sel.xpath('//div[@class="option-list gio_district"]//div[@class="item-list"]/a/text()').extract()
-        links = sel.xpath('//div[@class="option-list gio_district"]//div[@class="item-list"]/a/@href').extract()
+        areas = sel.xpath('//div[@id="plateList"]//a[@class="level1-item "]/text()').extract()
+        links = sel.xpath('//div[@id="plateList"]//a[@class="level1-item "]/@href').extract()
         base_url = get_base_url(response)
 
         sold_url = urljoin(base_url, '/chengjiao')
@@ -378,27 +378,27 @@ class LianjiaSHSpider(Spider):
     def parse_secondhand_house_page(self, response):
         sel = Selector(response)
 
-        house_infos = sel.xpath('//ul[@id="house-lst"]/li/div[@class="info-panel"]')
+        house_infos = sel.xpath('//div[@id="js-ershoufangList"]//li/div[@class="info"]')
 
-        titles = house_infos.xpath('h2/a/text()').extract()
-        ids = house_infos.xpath('h2/a/@key').extract()
+        titles = house_infos.xpath('div[@class="prop-title"]/a/text()').extract()
+        ids = house_infos.xpath('//div[@id="js-ershoufangList"]//li/a[@gahref="results_click_order_1"]/@key').extract()
 
-        col_1 = house_infos.xpath('div[@class="col-1"]')
-        where = col_1.xpath('div[@class="where"]')
-        communities = where.xpath('.//span[@class="nameEllipsis"]/text()').extract()
-        rooms = where.xpath('span[1]/text()').extract()
-        spaces = where.xpath('span[2]/text()').extract()
-        other = col_1.xpath('div[@class="other"]/div[@class="con"]')
-        main_areas = other.xpath('a[1]/text()').extract()
-        sub_areas = other.xpath('a[2]/text()').extract()
-        labels = col_1.xpath('.//div[@class="view-label left"]')
-        tags = [label.xpath('span[not(contains(@class,"-ex"))]/@class').extract() for label in labels]
+        info = house_infos.xpath('div[@class="info-table"]')
+        row_1 = info.xpath('div[1]')
+        row_1_left = filter(lambda x: x.strip(), row_1.xpath('span[@class="info-col row1-text"]/text()').extract())
+        rooms = [x.split('|')[0].strip() for x in row_1_left]
+        spaces = [x.split('|')[1].strip() for x in row_1_left]
+        totals = row_1.xpath('div/span[@class="total-price strong-num"]/text()').extract()
 
-        col_3 = house_infos.xpath('div[@class="col-3"]')
-        totals = col_3.xpath('div[@class="price"]/span/text()').extract()
-        units = col_3.xpath('div[@class="price-pre"]/text()').extract()
+        row_2 = info.xpath('div[2]')
+        row_2_left = row_2.xpath('span[1]')
+        communities = row_2_left.xpath('a[1]/span/text()').extract()
+        main_areas = row_2_left.xpath('a[2]/text()').extract()
+        sub_areas = row_2_left.xpath('a[3]/text()').extract()
+        # built_years = [i.strip(' |\n\t') for i in filter(lambda x: x.strip(' |\n\t'), row_2_left.xpath('text()').extract())]
+        units = row_2.xpath('span[@class="info-col price-item minor"]/text()').extract()
 
-        attrs = [titles, ids, communities, rooms, spaces, main_areas, sub_areas, tags, totals, units]
+        attrs = [titles, ids, communities, rooms, spaces, main_areas, sub_areas, totals, units]
         min_length = min(len(i) for i in attrs)
         if min_length <= 0:
             self.log('Crawled page %s cant find any house info' % response.url, logging.WARN)
@@ -408,24 +408,24 @@ class LianjiaSHSpider(Spider):
             loader.add_value('city', self.city)
             loader.add_value('title', titles[i])
             loader.add_value('room', rooms[i])
-            # loader.add_value('b_year', None)
+            # loader.add_value('b_year', built_years[i])
             loader.add_value('comm', communities[i])
             loader.add_value('id', ids[i])
             loader.add_value('main', main_areas[i])
             loader.add_value('sub', sub_areas[i])
             loader.add_value('space', spaces[i])
             # loader.add_value('listed', listed)
-            loader.add_value('tags', tags[i])
+            # loader.add_value('tags', tags[i])
             loader.add_value('total', totals[i])
             loader.add_value('unit', units[i])
             yield loader.load_item()
 
-        page_box = sel.xpath('//div[@class="page-box house-lst-page-box"]')
-        cur_page = page_box.xpath('a[@class="on"]/text()').extract_first()
+        page_box = sel.xpath('//div[@class="c-pagination"]')
+        cur_page = page_box.xpath('span[@class="current"]/text()').extract_first()
         if cur_page == '1':
             pages = page_box.xpath('a[@gahref="results_totalpage"]/text()').extract_first()
             if not pages:
-                pages = page_box.xpath('a[@gahref="last()-1"]/text()').extract_first()
+                pages = page_box.xpath('a[last()-1]/text()').extract_first()
             if not pages:
                 self.log('Crawled %s cant find any page.' % response.url)
                 return
@@ -447,8 +447,8 @@ class LianjiaSHSpider(Spider):
 
     def parse_sold_house_area(self, response):
         sel = Selector(response)
-        areas = sel.xpath('//div[@class="option-list gio_district"]/a[@class!="on"]/text()').extract()
-        links = sel.xpath('//div[@class="option-list gio_district"]/a[@class!="on"]/@href').extract()
+        areas = sel.xpath('//div[@id="plateList"]//a[@class="level1-item "]/text()').extract()
+        links = sel.xpath('//div[@id="plateList"]//a[@class="level1-item "]/@href').extract()
         base_url = get_base_url(response)
 
         for i, area in enumerate(areas):
@@ -458,16 +458,19 @@ class LianjiaSHSpider(Spider):
     def parse_sold_house_page(self, response):
         sel = Selector(response)
 
-        house = sel.xpath('//ul[@class="clinch-list"]//div[@class="info-panel clear"]')
-        house_ids = house.xpath('h2[@class="clear"]/a/@key').extract()
-        titles = house.xpath('h2[@class="clear"]/a/text()').extract()
-        col_1 = house.xpath('div[@class="col-1 fl"]')
-        main_areas = col_1.xpath('div[@class="other"]/div[@class="con"]/a[1]/text()').extract()
-        sub_areas = col_1.xpath('div[@class="other"]/div[@class="con"]/a[2]/text()').extract()
-        col_2 = house.xpath('div[@class="col-2 fr"]')
-        deals = col_2.xpath('div[@class="dealType"]/div[1]/div[@class="div-cun"]/text()').extract()
-        units = col_2.xpath('div[@class="dealType"]/div[2]/div[@class="div-cun"]/text()').extract()
-        totals = col_2.xpath('div[@class="dealType"]/div[3]/div[@class="div-cun"]/text()').extract()
+        house = sel.xpath('//div[@class="m-list cj-list"]/ul//div[@class="info-table"]')
+        house_ids = sel.xpath('//div[@class="m-list cj-list"]/ul/li/a[@name="selectDetail"]/@key').extract()
+        communities = [i.strip() for i in house.xpath('.//a[@class="info-col text link-hover-green"]/span/text()').extract()]
+        titles = [i.strip() for i in filter(lambda x: x.strip(), house.xpath('.//a[@class="info-col text link-hover-green"]/text()').extract())]
+
+        row_2 = house.xpath('div[2]')
+        deals = row_2.xpath('div[2]/text()').extract()
+        totals = row_2.xpath('div[3]/span[1]/text()').extract()
+
+        row_3 = house.xpath('div[3]')
+        main_areas = row_3.xpath('span[@class="row2-text"]//a[1]/text()').extract()
+        sub_areas = row_3.xpath('span[@class="row2-text"]//a[2]/text()').extract()
+        units = row_3.xpath('div[@class="info-col price-item minor"]/text()').extract()
 
         attrs = [house_ids, titles, main_areas, sub_areas, deals, units, totals]
         min_length = min(len(i) for i in attrs)
@@ -477,29 +480,26 @@ class LianjiaSHSpider(Spider):
         for i in range(0, min_length):
             loader = SoldHouseLoader(item=SoldHouseItem())
             loader.add_value('city', self.city)
-            community, room, space = titles[i].split()[:3]
-            loader.add_value('comm', community)
-            # loader.add_value('info', house_infos[i])
+            room, space = titles[i].split()[:2]
+            loader.add_value('comm', communities[i])
             loader.add_value('deal', deals[i])
             loader.add_value('total', totals[i])
             loader.add_value('unit', units[i])
             loader.add_value('main', main_areas[i])
             loader.add_value('sub', sub_areas[i])
-            # loader.add_value('browse', browse)
             loader.add_value('room', room)
             loader.add_value('space', space)
-            # loader.add_value('b_year', built_years[i])
             loader.add_value('id', house_ids[i])
             yield loader.load_item()
 
-        page_box = sel.xpath('//div[@class="page-box house-lst-page-box"]')
-        cur_page = page_box.xpath('a[@class="on"]/text()').extract_first()
+        page_box = sel.xpath('//div[@class="c-pagination"]')
+        cur_page = page_box.xpath('span[@class="current"]/text()').extract_first()
         if cur_page == '1':
             base_url = get_base_url(response)
             area = base_url.strip('/').split('/')[-1]
             pages = page_box.xpath('a[@gahref="results_totalpage"]/text()').extract_first()
             if not pages:
-                pages = page_box.xpath('a[@gahref="last()-1"]/text()').extract_first()
+                pages = page_box.xpath('a[last()-1]/text()').extract_first()
             if not pages:
                 self.log('Crawled %s cant find any page.' % response.url)
                 return
