@@ -77,6 +77,7 @@ class SoldHouseLoader(ItemLoader):
     space_in = MapCompose(filter_space, encode_field)
     hang_in = MapCompose(filter_hang, encode_field)
     period_in = MapCompose(filter_digit, encode_field)
+    unit_in = MapCompose(filter_digit,encode_field)
 
 
 class NewHouseLoader(ItemLoader):
