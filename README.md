@@ -5,3 +5,6 @@ Use scrapy as scraping framework
 * Running On multiple machines at the same time
 * Randomly switch agents & proxies avoid banned
 * Data stored in Hbase
+
+![bj unit](pics/bj_unit.png "bj_unit")
+![gz range](pics/gz_range.png "gz_range")
