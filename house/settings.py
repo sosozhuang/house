@@ -88,6 +88,7 @@ DOWNLOADER_MIDDLEWARES = {
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
 EXTENSIONS = {
     'house.extensions.IdleSpider': 500,
+    'house.extensions.SparkStreamingExt': 500,
 }
 
 # Configure item pipelines
@@ -142,3 +143,6 @@ PROXIES_TIMEOUT = 60
 PROXY_RETRY_TIMES = 2
 # house.extensions.IdleSpider
 IDLESPIDER_TIMEOUT = 90
+#house.extensions.SparkStreamingExt
+SPARK_STREAMING_ENABLED = True
+SPARK_STREAMING_PORT = 9999
