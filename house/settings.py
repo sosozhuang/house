@@ -146,3 +146,5 @@ IDLESPIDER_TIMEOUT = 90
 #house.extensions.SparkStreamingExt
 SPARK_STREAMING_ENABLED = True
 SPARK_STREAMING_PORT = 9999
+
+COMMANDS_MODULE = 'house.commands'
